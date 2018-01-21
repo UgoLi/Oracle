@@ -1,0 +1,30 @@
+#include <stdio.h>
+exec sql include sqlca;
+void sqlerror()
+{
+	printf("sqlerror:%s\n",sqlca.sqlerrm.sqlerrmc);
+}
+int main(void)
+{
+	exec sql begin declare section;
+		char userpasswd[30]="openlab/open123";
+		int ids[20];
+		char names[20][25];
+		int rids[20];
+	exec sql end declare section;
+	exec sql whenever sqlerror do sqlerror();
+	exec sql connect:userpasswd;
+	exec sql select id,name,region_id into ids,:names,:rids from s_dept;
+	exec sql commit work release;
+	int i = 0;
+	for(;i<sqlca.sqlerrd[2];i++)
+	{
+		printf("%d %s %d\n",ids[i],names[i],rids[i]);
+	}
+	return 0;
+}
+
+
+
+
+

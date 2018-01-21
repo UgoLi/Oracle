@@ -1,0 +1,38 @@
+#include <stdio.h>
+exec sql include sqlca;
+struct emp{
+	int id;
+	char name[25];
+	double sal;
+};
+int main(void)
+{
+	exec sql begin declare section;
+		char userpasswd[30]="openlab/open123";
+		struct emp e;
+	exec sql end declare section;
+	exec sql connect:userpasswd;
+    exec sql declare empcursor scroll cursor for
+		select id,first_name,salary from s_emp;
+	exec sql open empcursor;
+	exec sql fetch absolute 10 empcursor into :e;
+	printf("%d %s %g\n",e.id,e.name,e.sal);
+	exec sql fetch next empcursor into :e;
+	printf("%d %s %g\n",e.id,e.name,e.sal);
+	exec sql fetch relative -5 empcursor into :e;
+	printf("%d %s %g\n",e.id,e.name,e.sal);
+	exec sql fetch last empcursor into :e;
+	printf("%d %s %g\n",e.id,e.name,e.sal);
+	exec sql close empcursor;
+	exec sql commit work release;
+	return 0;
+}
+
+
+
+
+
+
+
+
+

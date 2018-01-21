@@ -1,0 +1,398 @@
+回顾：
+1.数据库介绍
+   sql:
+      dql:   select
+      dml:  insert   delete   update
+      ddl:   create   drop  alter
+      tcl:    commit    rollback     savepoint
+      dcl:   create user、grant、revoke
+    
+    desc s_dept;
+2.from子句
+   select name from s_dept;
+   select id,name from s_dept;
+   select * from s_dept;
+   select id,12*salary+1000 from s_emp;
+   select id,12*salary + 1000 as "yearsal" from s_emp;
+   select id,first_name||''''||last_name name from s_emp;
+   select id,12*salary*(1+nvl(commission_pct,0)/100)                   yearsal  from s_emp;
+   select distinct title,dept_id from s_emp;
+
+3.where子句
+   select id,first_name,salary from s_emp
+               where salary>1400;
+   select id,first_name from s_emp
+              where first_name='Ben';
+   select id,first_name,salary from s_emp
+              where salary between 1100 and 1550;
+   select id,first_name,dept_id from s_emp
+              where dept_id in(31,42,50); 
+   select id,first_name from s_emp
+              where first_name like '_a%';  
+   select table_name from user_tables
+              where table_name like 'S\_%' escape '\';
+   select id,first_name,manager_id from s_emp
+              where manager_id is null;
+   and  or  not
+   select id,first_name,salary from s_emp
+             where salary>=1100 and salary<=1550;
+   select id,first_name,dept_id from s_emp
+             where dept_id=31 or dept_id=42 or dept_id=50;
+   select id,first_name,commission_pct from s_emp
+              where commission_pct is not null;
+
+4.order by子句
+   select id,first_name,salary from s_emp
+      order by salary desc,id;
+
+   select id,first_name,start_date from s_emp
+       order by start_date;
+
+练习：
+select id,first_name,salary,
+  12*salary*(1+nvl(commission_pct,0)/100) as yearsal
+    from s_emp
+     where 12*salary*(1+nvl(commission_pct,0)/100)>15000
+       order by yearsal desc;
+
+-----------------------------------------------------------------
+1.单行函数
+  1.1 单行函数和组函数的概念
+     单行函数：针对sql语句影响的数据，每行都做处理，每行产生一个结果
+     select upper(first_name) from s_emp
+           where id<11;
+     组函数：针对sql语句影响的数据，每组做处理，每组产生一个结果
+     select count(first_name) from s_emp
+           where id<11;
+
+   1.2 dual表
+     desc dual;
+   1.3 字符串函数
+     upper(s): 把参数s中的英文字母转换成大写 返回
+        select upper('hello world!') from dual;
+     lower(s): 把参数s中的英文字母转换成小写 返回
+        select lower('hello world!') from dual;
+     initcap(s):把参数s中的每个单词转换成首字母大写、其余小写的形式
+        select initcap('hello world!') from dual;
+     concat(s1,s2): 字符串连接     ||
+
+     substr(s,start[,length]):从start位置开始，截取字符串s中的length的字符
+       start:开始位置  从1计数   如果写成0，按照1处理
+                >0 表示从左侧开始计数
+                <0 表示从右侧开始计数
+       length: 截取的子字符串的长度
+                    缺省时，表示截取到字符串的最后
+       select substr('hello world!',-6,4) from dual;
+     length(s): 返回字符串的长度
+       select length('hello world!') from dual;
+
+     练习：使用两种方式 列出s_emp中first_name的后三位
+      select first_name,substr(first_name,-3) from s_emp;
+
+      select first_name,
+            substr(first_name,length(first_name)-2) from s_emp;
+     
+   1.4 数字函数
+      round(x[,y]) : 四舍五入
+         y:  缺省时，  0              round(4.56) = 5
+             >0   四舍五入到小数点后y位  round(4.56,1) = 4.6
+             <0   四舍五入到小数点前|y|位 round(456.78,-2) =500
+      trunc (x[,y])  :截取 
+         y:  缺省时，  0              trunc(4.56) = 4
+             >0   截取到小数点后y位  trunc(4.56,1) = 4.5
+             <0   截取到小数点前|y|位 trunc(456.78,-2) =400
+         select trunc(456.67,-2) from dual;
+
+      floor(x) : 不大于x的最大整数
+      ceil(x)：不小于x的最小整数
+         select floor(4.5) from dual;
+         select ceil(4.5) from dual;
+
+   1.5 日期类型和日期函数
+     1.5.1 日期类型 date
+        默认格式：
+               英文：  dd-MON-yy     12-OCT-17
+               中文：  dd-n月-yy         12-10月-17
+        系统时间：  sysdate
+              select sysdate from dual;
+
+        date数据各部分的格式表示：
+        cc                  世纪                        21
+
+        yy                 2位数字的年           17
+        yyyy             4位数字的年            2017
+        year              年份的英文全拼      twenty seventeen
+        
+        mm               2位数字的月            10
+        mon(MON)  月份单词的前三个字母    oct(OCT)
+        month(MONTH)  月份单词的全拼    october(OCTOBER)
+     
+        dd                2位数字的天             12
+        dy                星期的单词的前三个字母  thu
+        day              星期单词的全拼                 thursday
+
+        hh                12小时制的小时        02
+        hh24            24小时制的小时        14
+
+        mi                分钟                            34
+   
+        ss                  秒                               15
+
+        2017-10-12     'yyyy-mm-dd'
+
+     1.5.2 日期类型的算术运算  （在day上进行操作）
+        1) 日期 + 数字
+             select sysdate + 80 from dual;
+        2) 日期 - 数字
+             select sysdate - 200 from dual;
+        3) 日期1 - 日期2
+             select sysdate - to_date('01-JAN-00') from dual;
+
+     1.5.3 常用的日期函数
+        add_months(d,n):在日期d上加n个月
+           select add_months(sysdate,4) from dual;
+        months_between(d1,d2):返回两个日期相差的月数
+           select months_between(sysdate,'01-JAN-00') 
+                from dual;
+        next_day(d,dy):返回日期d的下一个dy(星期几)
+           select next_day(sysdate,'FRIDAY') from dual;
+           select next_day(sysdate,'FRI') from dual;
+           select next_day(sysdate,6) from dual;
+           使用1~7 对应 星期日~星期六
+        last_day(d): 返回日期d所在月份的最后一天
+           select last_day(sysdate) from dual;
+
+   1.6 转换函数
+      1.6.1 to_char
+         to_char(d|n[,fmt]): 把日期或数字按照给定的格式转换成字符串
+         1) 日期--> 字符串
+          select to_char(sysdate,'yyyy-mm-dd hh:mi:ss am')
+                   from dual;
+          select id,first_name,to_char(start_date,'yyyy-mm-dd')
+                 from s_emp
+                      order by start_date;
+           
+         2) 数字 ---> 字符串
+            格式：
+            9          小数点前代表0-9，小数点后代表1-9
+            0          小数点前代表前导0，小数点后代表0-9
+            .           小数点
+            ,           分隔符
+            $          美元符号
+            L          本地货币符号
+            格式字符串以 fm开头，比如：fm$099,999.00
+            select to_char(1234,'fm$099,999.00') from dual;
+ 
+    1.6.2 to_number
+          to_number(s[,fmt])
+           select to_number('$001,234.00','fm$099,999.00')
+                      from dual;
+          -- 隐式转换
+          select id,first_name,salary from s_emp
+                      where id='1';
+
+     1.6.3 to_date
+          to_date(s[,fmt])  字符串  ----> 日期
+          create table testdate_zsm_00(
+             id number,
+             start_time date
+          );
+          insert into testdate_zsm_00 values(1,'12-OCT-17');
+          insert into testdate_zsm_00 
+             values(2,to_date('2017-10-12 16:22','yyyy-mm-dd hh24:mi'));
+          select id,to_char(start_time,'yyyy-mm-dd hh24:mi')
+                  from testdate_zsm_00;
+
+     1.7 函数嵌套
+       一个函数的返回值作为另一个函数的参数
+       -- 练习： 列出每个员工的id,first_name和manager_id,
+                      如果manager_id为null，显示成'BOSS'
+       nvl : 参数可以是任意类型，但是两个参数的类型必须一致
+       to_char
+
+       select id,first_name,
+            nvl(to_char(manager_id),'BOSS')  mid from s_emp;
+
+2.表连接
+  2.1 需求：列出每个员工的id,first_name和所在部门的名称
+    1) 列出每个员工的id,first_name和所在部门的编号
+        select id,first_name,dept_id from s_emp;
+    2) 需要查询的数据来自于两张表
+        desc s_dept;
+      Name                                      Null?        Type
+      ----------------------------- ------------- ------------
+      ID                   部门编号        NOT NULL NUMBER(7)
+      NAME            部门名称         NOT NULL VARCHAR2(25)
+      REGION_ID    地区编号                            NUMBER(7)      
+       
+       s_emp:  id,first_name
+       s_dept: name
+
+      select * from s_dept;
+    
+      select  s_emp.id,s_emp.first_name,s_dept.name
+          from s_emp,s_dept
+              where s_emp.dept_id = s_dept.id;
+
+   笛卡尔积：   从多张表中获取数据时，没有表连接的条件的结果集，称为笛卡尔积
+   一般把表连接的筛选条件称为连接条件(关联条件)
+
+   表连接的基本语法：
+   select 字段列表
+        from 表1,表2,..
+             where 关联条件;
+
+  2.2 表的别名
+    表名 别名
+    select e.id,e.first_name,d.name
+           from s_emp e,s_dept d
+               where e.dept_id = d.id;
+    -- 表一旦命名别名，则原表名在当前语句中失效
+    select e.id,e.first_name,d.name
+           from s_emp e,s_dept d
+               where e.dept_id = s_dept.id; -- 错误
+
+    -- 如果关联的多张表中，字段名没有冲突，可以省略该字段名前的表名或别名
+    select e.id,first_name,name
+         from s_emp e,s_dept d
+              where dept_id = d.id;   
+
+  2.3 表连接的分类
+    内连接：符合关联条件的数据才回出现在结果集中
+    外连接：内连接的结果集 + 匹配不上的数据
+
+  2.4 内连接
+    2.4.1 等值连接
+       关联条件中使用的运算符是 =
+       desc s_region;
+      Name                                 Null?          Type
+      ---------------------------- ------------ ------------
+      ID             地区编号             NOT NULL NUMBER(7)
+      NAME      地区名称             NOT NULL VARCHAR2(50)
+
+      -- 练习：列出每个部门及其所在地区的信息，包括
+                    部门编号、部门名称、所在地区的名称
+      s_dept:  id,name
+      s_region:name
+      关联字段：s_dept       region_id
+                        s_region    id
+      
+      select d.id,d.name dname,r.name rname
+         from s_dept d,s_region r
+           where d.region_id = r.id;
+
+    2.4.2 非等值连接
+       关联条件中使用的运算符不是 =
+    
+       需求：列出员工及其工资级别的信息
+       创建一个工资级别表:salgrade
+       create table salgrade(
+           grade   number(7) primary key,
+           losal     number(11,2),
+           hisal     number(11,2)
+       );   
+       插入数据：
+       insert into salgrade values(1,700,1200);
+       insert into salgrade values(2,1201,1400);
+       insert into salgrade values(3,1401,2000);
+       insert into salgrade values(4,2001,3000);
+       insert into salgrade values(5,3001,9999);
+       commit;
+       
+       select e.id,e.first_name,e.salary,g.grade
+         from s_emp e,salgrade g
+             where e.salary between g.losal and g.hisal;
+ 
+   2.4.3 自连接
+     在逻辑上把一张表当成两张表使用
+     使用自连接时，表必须命名别名
+     需求：列出s_emp表中所有的领导的信息
+     1）列出员工及其领导的信息
+       select e.id,e.first_name,m.id,m.first_name
+            from s_emp e,s_emp m
+               where e.manager_id = m.id;
+     2) 去掉员工的相关信息，排重
+       select distinct m.id,m.first_name
+            from s_emp e,s_emp m
+               where e.manager_id = m.id;
+
+  2.5 外连接
+    (+) -- oracle中外连接的特有用法
+
+    表1.字段(+) 运算符 表2.字段：
+         内连接的结果集 + 表2中匹配不上的数据
+    表1.字段 运算符 表2.字段(+)
+         内连接的结果集 + 表1中匹配不上的数据
+     
+    匹配不上的这部分数据，另一张表中所有字段添null      
+
+    2.5.1 自连接
+    需求：列出普通员工的信息
+    1）把普通员工的信息加入到结果集
+       select e.id,e.first_name,m.id,m.first_name
+            from s_emp e,s_emp m
+               where e.manager_id(+) = m.id;
+    
+    2) 从结果集中筛选出普通员工
+       select m.id,m.first_name
+            from s_emp e,s_emp m
+               where e.manager_id(+) = m.id
+                   and e.id is null;
+
+    2.5.2 等值连接
+     -- 把id=1的部门改为null
+         update s_emp set dept_id=null where id=1;
+         commit;
+     -- 列出所有员工的id,first_name和所在部门名称
+      select e.id,e.first_name,d.name
+         from s_emp e,s_dept d
+             where e.dept_id = d.id(+);
+     
+     2.5.3 非等值连接
+       -- 把id=1的员工的工资改为10000
+        update s_emp set salary = 10000 where id=1;
+        commit;
+       -- 列出所有员工的工资级别信息
+       select e.id,e.first_name,e.salary,g.grade
+           from s_emp e,salgrade g
+             where e.salary between g.losal(+) and g.hisal(+);
+       
+       select e.id,e.first_name,e.salary,g.grade
+          from s_emp e,salgrade g
+            where e.salary(+)>=g.losal and e.salary(+)<=g.hisal;
+-----------------------------------------------------------------
+练习：
+ -- 向部门表中添加一行数据
+ insert into s_dept(id,name) values(110,'Test');
+ commit;
+1. 列出所有没有员工的部门的信息
+2. 列出员工的编号、名称、以及工作地区的名称
+   三表查询：
+   select 字段列表
+      from 表1,表2,表3
+         where 关联条件1 and 关联条件2;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

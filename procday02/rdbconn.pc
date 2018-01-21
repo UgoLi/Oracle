@@ -1,0 +1,26 @@
+#include <stdio.h>
+exec sql include sqlca;
+int main(void){
+	exec sql begin declare section;
+	 char userpasswd[30]="openlab/open123";
+//	 char rdbdesc[20] = "DB10";
+     char rdbdesc[200] = "(DESCRIPTION ="
+       "(ADDRESS = (PROTOCOL = TCP)(HOST = 172.60.5.80)(PORT = 1521))"
+         "(CONNECT_DATA ="
+          "(SERVER = DEDICATED)"
+            "(SERVICE_NAME = orcl)"
+         ")"
+       ")";
+	 char name[25];
+	exec sql end declare section;
+	exec sql connect:userpasswd using :rdbdesc;
+	if(sqlca.sqlcode)
+		printf("%s\n",sqlca.sqlerrm.sqlerrmc);
+    exec sql select first_name into :name
+		from s_emp where id=1;
+	exec sql commit work release;
+	printf("%s\n",name);
+	return 0;
+}
+
+

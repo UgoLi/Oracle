@@ -1,0 +1,25 @@
+#include <stdio.h>
+exec sql include sqlca;
+int main(void)
+{
+	exec sql begin declare section;
+       char userpasswd80[30]="openlab/open123";
+       char userpasswd81[30]="openlab/open123";
+	   char rdbdesc[20]="DB10";
+	   char name80[25];
+	   char name81[25];
+	   char label80[10]="80";
+	   char label81[10]="81";
+	exec sql end declare section;
+	exec sql connect:userpasswd81 at :label81;
+	exec sql connect:userpasswd80 at :label80 using :rdbdesc;
+    exec sql at :label80 select first_name into :name80
+		from s_emp where id=1;
+    exec sql at :label81 select first_name into :name81
+		from s_emp where id=1;
+	exec sql at :label80 commit work release;
+	exec sql at :label81 commit work release;
+	printf("172.60.5.80:%s\n",name80);
+	printf("172.60.5.81:%s\n",name81);
+	return 0;
+}

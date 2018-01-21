@@ -1,0 +1,281 @@
+PROC
+主要内容：
+1) proc简介
+2) proc程序的开发过程
+3) 宿主变量和指示变量
+4) 嵌入sql语句
+5) 连接数据库
+6) 错误处理
+7) 数据的存取更新操作
+8) 动态sql
+-----------------------------
+1.什么是pro程序？
+  1.1 概念
+    在过程化的编程语言中嵌入sql语句而开发出的应用程序，叫pro程序。
+    在通用的编程语言中嵌入的sql语句称为嵌入式sql
+    被嵌入了sql语句的编程语言称为宿主语言    
+    
+  
+  1.2 proc/c++
+    在c/c++语言中嵌入sql语句而开发出的应用程序，称为proc/c++程序
+    目的：是C/C++这种高效的语言成为访问oracle数据库的工具     
+
+2. proc中嵌入的sql语句
+   #include .....
+   ...
+   /* 包含一个名为sqlca的结构 */
+   exec sql include sqlca;
+   变量的声明
+   函数的声明
+
+   int main(void)
+   {
+       /* 连接数据库 */
+       exec sql connect:用户名/密码;
+
+      /* 操作数据库：比如查询 */
+      exec sql select 字段列表 into 变量列表 from 表名
+          where 条件;
+
+       /* 关闭并释放连接资源 */
+       exec sql commit work release;
+       exec sql rollbakc work release;
+   }
+
+3.C程序的开发步骤
+   1) 编写源程序
+       vi xxx.c
+   2) 编译、链接
+       gcc xxx.c -lxxxxx
+   3) 运行
+       ./a.out
+4.proc程序的开发步骤
+   1) 编写源程序
+       vi xxxx.pc
+   2) 预编译   
+
+       proc xxx.pc    ----->  xxx.c
+   3) 编译、链接
+       gcc xxx.c  -lclntsh              -- linux
+       gcc xxx.c  -lorasql10(11)   -- windows
+   4) 运行
+       ./a.out
+
+    案例：first.pc
+    vi first.pc
+    proc first.pc
+    gcc first.c -lclntsh
+    ./a.out
+
+5. 宿主变量
+  5.1 概念
+    proc中C语言称为宿主语言
+    在宿主语言中定义，即可以在宿主语言中使用，也可以在sql语句中使用的变量，称为宿主变量。
+  5.2 宿主变量的数据类型
+    char                         字符型
+    char   var[n]             定长字符串
+    short
+    int                            整型
+    long
+    float
+    double                     浮点型
+    varchar var[n]          变长字符串
+  
+   5.3 定长字符串和变长字符串
+    5.3.1 定长字符串
+      字符串的长度不足时用空格补齐
+      
+      案例：charn.pc
+    
+    5.3.2 变长字符串
+      案例：varcharn.pc
+
+      char name[25] ----> varchar name[25]
+      预编译时，varchar类型的数组被翻译成了同名的结构：
+      struct{
+         unsigned short len;
+         unsigned char arr[25];
+      } name;
+      
+      varchar类型的数组在sql语句中使用时，和char型数组一样
+      在宿主语言中使用时，按照结构的用法：
+      提取字符串的值：name.arr
+      获取字符串的长度：name.len
+
+      使用varchar类型的数组时，可以会产生垃圾数据，解决方式：
+      1) 字符串进行初始化，把数组的所有元素初始化为'\0'
+          varchar name[25] = {0};
+      2) 手动为字符串添加结束标志
+          name.arr[name.len] = '\0';
+
+     5.3.3 使用预编译选项解决变长字符串的问题
+       oname   相当于 gcc 的 -o
+       
+       char_map  = charz: 处理成定长，空格补齐，'\0'结尾
+                         = varchar2|charf: 处理成定长，空格补齐，不以'\0'结尾
+                         = string: 处理成变长，以'\0'结尾
+      
+       proc charn.pc char_map=string
+       gcc charn.c -lclntsh
+       ./a.out
+
+   
+   5.4 宿主变量使用时的注意事项
+      1) 在sql语句中使用宿主变量时，最好在变量名前加:
+          ...
+          int id=2;
+          ...
+          exec sql select first_name into name from s_emp
+              where id=id;
+          ...
+       2) DDL语句中不允许使用宿主变量
+          案例：droptable.pc
+            .....
+            char tablename[20]="testdsql_zsm_00";
+            .....
+            /* 删除名为 tablename 的表 */
+            exec sql drop table tablename;
+            /* 预编译错误：宿主变量不能在ddl语句中使用 */
+            exec sql drop table :tablename;
+       3) 宿主变量可以使用指针，但是不推荐
+       4) 宿主变量的定义，强烈建议放入声明区
+           (C++语言、windows平台要求宿主变量的声明必须在声明区)
+           exec sql begin declare section;
+               /* 声明区 */
+           exec sql end declare section;
+       
+     练习：定义合适的变量，接收s_dept中id=43的部门的信息，并输出。  
+    
+     案例：searchdeptbyid.pc
+     
+6.指示变量
+  6.1 指示变量的作用
+    当数据库中的字段的值，赋值给宿主变量时，赋值的状态了一通过指示变量获取。
+    指示变量的值：
+            0          代表正常赋值
+            -1        代表数据库中对应字段的值为null
+           >0        代表截断赋值 尽量避免(编译没问题，执行时在赋值阶段不会出现错误，引起的后续的问题 时机不确定)
+
+  6.2 语法
+    指示变量的数据类型必须是short
+    short indid;
+    short indname;
+    
+    exec sql select id,first_name into :id,:name
+          from s_emp where id=1;
+
+    exec sq	l select 字段1,字段2 into
+         :宿主变量1 [indicator] :指示变量 , 宿主变量2
+       from 表名 where 条件;
+    
+    exec sql select id,first_name into :id:indid,:name:indname
+          from s_emp where id=1;
+
+  6.3 案例：把s_emp表中id=1的员工的id,first_name,manager_id查询出来，保存到相应的宿主变量，同时使用指示变量指示赋值状态。
+    
+   案例： indvar.pc
+
+7.数组变量
+  7.1 数组变量使用的注意事项
+    1) 除了字符型外，其他类型的数组只能使用一维的
+        int ids[50];
+        char name[50][25];
+    2) 不支持数组指针
+    3) 最大元素个数 32767
+    4) 在select语句中使用数组变量时，只能给出数组的名字，不能使用下标
+    5) 如果要指示多个变量的赋值状态，可以使用指示变量数组
+
+  7.2 把s_emp表中的所有员工的id,first_name和manager_id查询出来，使用合适的数组接收查询结果，并使用指示变量数组指示manager_id的赋值状态
+    
+     案例：arr_var.pc
+
+8.sqlca通信区
+  8.1 通信区的概念 
+    通信区：为了取得每个sql语句执行后的相关状态说明，以便进行错误的后续操作或跟踪
+    oracle中提供了两个通信区:
+    SQL通信区：sqlca
+    Oracle通信区：oraca
+
+  8.2 sqlca通信区
+   执行proc程序时，oracle把每一条sql中状态信息存入sqlca中，包括错误代码、警告标志设置、诊断文本和处理行数等。
+   本质上，sqlca是一个结构体
+   proc每执行一条sql语句，都会把相关信息写入到sqlca，覆盖上一条sql语句的执行的结果信息，所以需要获取执行结果信息的话，要执行完马上获取。
+   
+    sqlca.sqlerrd[2]:    sql语句执行后影响的行数
+    sqlca.sqlcode:       sql执行的状态
+                       0：     执行正常
+                    >0：      执行出错(出现异常)
+                    <0 :        数据库系统错误 或者网络错误
+     sqlca.sqlerrm.sqlerrmc: 错误信息
+
+     案例：sqlca.pc
+
+
+9. oraca通信区
+  一个类似于sqlca的结构，可以作为sqlca通信区的补充。当需要获取更为详细的状态信息，可以使用oraca.
+  oraca通信区对sqlca的补充 
+  可以使用oraca获取执行的sql语句的文本
+
+  oraca的使用步骤：
+  1) 包含oraca
+       exec sql include oraca;
+  2) 打开oraca option
+      exec oracle option(oraca=yes);
+  3) 设置sql文本的保存标志
+      oraca.orastxtf 
+                     0： 默认值    不保存 
+                     1： sql语句出错时保存
+                     2： sql语句出现错误或警告时保存
+                     3： 都保存
+  4) 获取sql文本
+      oraca.orastxt.orastxtc
+
+   案例：oraca.pc
+
+10. proc中如何使用sql语句
+  1) select语句
+      在语句前加exec sql，配合into使用
+      exec sql select 字段列表 into 宿主变量列表 from 表名
+          where 条件;
+  2) dml语句(inert  delete update)
+       ddl语句(create   drop  alter)
+       tcl语句(commit   rollback  savepoint)
+       直接在语句前加exec sql
+       注意：ddl语句中不能使用宿主变量
+
+    综合案例：sql.pc
+    开发一个超小型的学生管理系统，完成以下功能：
+         创建学生信息表
+         添加学生信息
+         显示学生信息列表
+         根据学号更改信息
+         根据学号删除信息
+    
+      循环菜单：
+      学生管理系统，请选择：
+       1.创建表
+       2.学生注册
+       3.查看
+       4.修改信息
+       5.删除信息
+       0.退出
+
+练习：
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

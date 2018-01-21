@@ -1,0 +1,18 @@
+#include <stdio.h>
+exec sql include sqlca;
+int main(void)
+{
+	exec sql begin declare section;
+		char userpasswd[30]="openlab/open123";
+		int id=43;
+		char name[25];
+		int rid;
+	exec sql end declare section;
+	exec sql connect :userpasswd;
+    exec sql select id,name,region_id
+		into :id,:name,:rid from s_dept
+		where id=:id;
+	exec sql commit work release;
+	printf("%d %s %d\n",id,name,rid);
+	return 0;
+}

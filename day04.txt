@@ -1,0 +1,574 @@
+回顾：
+1.sql99中的表连接
+   select 字段列表
+     from 左表 {[inner]|{left|right|full} [outer]} join 右表
+         on 关联条件;
+
+2. 集合操作
+   union
+   union all
+   intersect
+   minus
+
+3. 组函数和分组
+   3.1 组函数
+     count      *
+     max
+     min
+     sum
+     avg
+
+     distinct
+     NULL
+   3.2 分组
+     group by
+     having
+
+    语法：
+    select
+      from 
+        where
+           group  by
+             having 
+               order by
+     
+    执行：  
+      from 
+        where
+           group  by
+             having 
+                select
+                  order by
+
+4. 子查询
+  where子句
+     select id,first_name,salary from s_emp
+       where salary>(
+       select salary froms _emp where first_name='Ben'
+     );
+     select id,first_name from s_emp
+       where id in(
+       select distinct manager_id from s_emp
+     );
+     select id,first_name from s_emp
+       where id not in(
+       select distinct manager_id from s_emp
+              where manager_id is not null
+     );
+     select id,name from s_dept d
+        where exists(select * from s_emp e 
+                where  e.dept_id = d.id);
+  having子句
+    select dept_id,avg(salary) avgsal
+       from s_emp
+          group by dept_id
+              having avg(salary)>(
+      select avg(salary) from s_emp
+    );
+  from子句
+    select e.id,e.first_name,e.salary,s.avgsal
+       from s_emp e,
+    (select dept_id,avg(salary) avgsal from s_emp
+        group by dept_id) s
+     where e.dept_id = s.dept_id
+        and e.salary>s.avgsal;
+  select子句
+    select  e.id,e.first_name,e.salary,(
+       select name from s_dept d where e.dept_id = d.id
+    ) dname
+      from s_emp e;
+
+5.表操作
+  5.1 创建表和删除表
+    create table 表名(
+       字段名 数据类型,
+       ....
+       字段名 数据类型
+    );
+    drop table 表名;
+   5.2 数据操作语句
+     1)insert
+        insert into 表名[(字段列表)] values(值列表);
+     2) update
+        update 表名 set 字段=新值[,字段=新值,...]
+             [where子句];
+     3) delete
+        delete [from] 表名 [where子句];
+       commit;
+
+     truncate table 表名;  -- 属于ddl语句，功能上等效于没有where子句的delete语句
+
+ 5.3 事务控制语句
+   commit;
+   rollback;
+   savepoint 保存点;
+   rollback to 保存点;
+
+   事务的ACID特性
+   
+----------------------------------------------------------------
+练习：
+2.给所有'Carmen'的下属涨工资
+   1) 查询'Carmen'的编号
+       select id from emp_zsm_00 
+            where first_name='Carmen';
+   2) 根据'Carmen'的编号 查询其下属的编号
+       select id from s_emp where manager_id = (
+           select id from emp_zsm_00 
+            where first_name='Carmen'
+       );
+   3) 根据员工编号 改工资
+       update emp_zsm_00 set salary = salary + 500
+          where id in(
+            select id from emp_zsm_00 where manager_id =
+            (
+                select id from emp_zsm_00 
+                   where first_name='Carmen'
+            )
+       );
+  
+3.删除和'Ben'同部门的员工
+   delete from emp_zsm_00 where dept_id=
+      (select dept_id from emp_zsm_00
+           where first_name='Ben')
+    and first_name !='Ben';
+
+-----------------------------------------------------------------
+1. 约束  constraint
+  数据完整性：
+    实体完整性
+    域完整性
+    引用完整性
+    自定义完整性
+  
+   1.1 约束的概念
+      对表中的字段添加的限制
+   1.2 约束的具体类型
+     主键约束：primary key
+        非空、唯一
+        一张表只能有一个主键
+     唯一约束： unique
+        不能重复
+        允许为null
+        一个表中可以有多个唯一
+      非空约束：  not null
+         不允许为null
+      检查约束：check(检查约束表达式)
+         字段的值必须能够使检查约束表达式为真
+      外键约束： foreign key   references
+        
+   1.3 约束的实现方式
+     列级约束：定义完一个字段后，直接在后边添加约束
+     表级约束：定义完一个表的所有字段后，逗号隔开，
+                       再添加约束
+
+   1.4 主键约束
+     1.4.1 列级实现：
+       1) 系统自动为约束命名
+       create table testcons_zsm_00(
+           id number(7) primary key,
+           name varchar2(20)
+       );
+       insert into testcons_zsm_00 values(1,'test1');
+       /* 违反了唯一约束 */
+       insert into testcons_zsm_00 values(1,'test2');
+       *
+      ERROR at line 1:
+     ORA-00001: unique constraint (OPENLAB.SYS_C0042650) violated
+      /* 主键字段的值不允许为null */
+      insert into testcons_zsm_00(name) values('test2');
+      *
+      ERROR at line 1:
+     ORA-01400: cannot insert NULL into         ("OPENLAB"."TESTCONS_ZSM_00"."ID")
+
+    2) 手动为约束命名
+      表名_字段_约束类型  ： testcons_id_pk
+      字段 数据类型 constraint 约束名 约束类型
+      drop table testcons_zsm_00;   
+      create table testcons_zsm_00(
+           id number(7) constraint testcons_id_pk_zsm_00 primary key,
+           name varchar2(20)
+       );
+       insert into testcons_zsm_00 values(1,'test1');
+       /* 违反了唯一约束 */
+       insert into testcons_zsm_00 values(1,'test1');
+       *
+      ERROR at line 1:
+      ORA-00001: unique constraint          (OPENLAB.TESTCONS_ID_PK_ZSM_00) violated
+
+   1.4.2 表级实现   复合主键(组合键)
+      drop table testcons_zsm_00;
+      create table testcons_zsm_00(
+           id number(7) primary key,
+           userid number(10) primary key,
+           name varchar2(20)
+       );
+       userid number(10) primary key,
+                             *
+      ERROR at line 3:
+      ORA-02260: table can have only one primary key
+
+       create table testcons_zsm_00(
+           id number(7),
+           userid number(10),
+           name varchar2(20),
+           constraint testcons_id_userid_pk_zsm_00 primary key(id,userid)
+       );
+       insert into testcons_zsm_00 values(1,1,'test1');
+       insert into testcons_zsm_00 values(1,2,'test1');
+       insert into testcons_zsm_00 values(2,1,'test1');
+       insert into testcons_zsm_00 values(2,2,'test1');
+       /* 违反了唯一约束 */
+       insert into testcons_zsm_00 values(2,2,'test1');
+
+       注意：不建议使用复合主键
+
+   1.5 唯一约束、非空约束和检查约束
+     1.5.1 列级实现
+       drop table testcons_zsm_00;
+       create table testcons_zsm_00(
+           id number primary key,
+           name varchar2(20) not null,
+           userid varchar2(18) unique,
+           sal number(11,2) check(sal>2000)
+       );
+       /* 不能向name字段插入null(非空约束的字段不允许为null) */
+       insert into testcons_zsm_00(id,userid,sal)
+               values(1,'1234',2500);
+
+       insert into testcons_zsm_00(id,name,userid,sal)
+               values(1,'name1','1234',2500);
+       /* 违反了唯一约束 */
+       insert into testcons_zsm_00(id,name,userid,sal)
+               values(2,'name2','1234',2350);
+       /* 唯一约束的字段允许为null */
+       insert into testcons_zsm_00(id,name,sal)
+               values(3,'name3',2350);
+       /* 唯一约束的字段 可以有多个null值 */
+       insert into testcons_zsm_00(id,name,sal)
+               values(4,'name4',2350);
+      /* 违反了检查约束 */
+       insert into testcons_zsm_00(id,name,sal)
+               values(5,'name5',1350);
+       *
+       ERROR at line 1:
+       ORA-02290: check constraint (OPENLAB.SYS_C0042698) violated
+
+    1.5.2 表级实现
+       drop table testcons_zsm_00;
+       /* 一个表中有两个唯一约束 */
+       create table testcons_zsm_00(
+           id number unique,
+           name varchar2(20) not null,
+           userid varchar2(18) unique,
+           sal number(11,2) check(sal>2000)
+       );
+      insert into testcons_zsm_00  values(1,'test1','12',3000);
+      /* 违反了id字段的唯一约束 */
+      insert into testcons_zsm_00 values(1,'test1','123',3000);
+      /* 违反了userid的唯一约束 */
+      insert into testcons_zsm_00 values(2,'test1','12',3000);
+
+     drop table testcons_zsm_00;
+     /* id和userid组合作为唯一键 */
+     create table testcons_zsm_00(
+           id number ,
+           name varchar2(20) not null,
+           userid varchar2(18),
+           sal number(11,2),
+           unique(id,userid),
+           check(sal>2000)
+       );
+
+   1.5.3 从业务层面，没有多个字段联合非空的需要，所有Oracle没有提供非空约束的表级实现
+
+   1.6 外键约束
+     一个表中某字段的值，受另一张表中某个字段的限制
+      主表(父表)：提供数据的表
+      从表(子表)：外键所在的表
+                          (引用主表中唯一性字段(主键、唯一)的值)
+                         外键的值只能是主表中对应字段的值或者为null
+     外键约束的语法：
+     references 主表(字段)
+     constraint 约束名  references 主表(字段)    
+
+    1.6.1 创建表
+      一般先创建主表，再创建从表(除非建表时也不添加外键约束)
+     /* 创建主表 */
+     create table parent_zsm_00(
+         id number(7) primary key,
+         name varchar2(25) not null
+     );  
+     /* 创建子表 */ 
+     create table child_zsm_00(
+        id number(7) primary key,
+        c_name varchar2(20) not null,
+        p_id number(7) references parent_zsm_00(id)
+     );
+
+     1.6.2 数据操作语句(dml)
+       对于有外键约束的表，执行dml操作时，一定要确保子表中
+      外键的值不能孤立(在主表中可以找到) 
+      1) insert
+         insert into parent_zsm_00 values(1,'Admin');
+         commit;
+         insert into child_zsm_00 values(1001,'test1',1);
+         insert into child_zsm_00 values(1002,'test2',null);
+         commit;
+     
+      2) update 
+         /* 违反了完整性约束-- 添加或更新子表数据时，主表中不存在该值 */
+          update child_zsm_00 set p_id=2 where id=1002;
+          *
+ERROR at line 1:
+ORA-02291: integrity constraint (OPENLAB.SYS_C0042774) violated - parent  not found
+
+       /* 违反了完整性约束-- 更新或删除主表数据时，数据被子表引用 */
+        update parent_zsm_00 set id=2 where id=1;    
+       *
+       ERROR at line 1:
+      ORA-02292: integrity constraint (SYSTEM.SYS_C0042798) violated - child record
+found
+
+    3) delete 
+        delete from parent_zsm_00 where id=1;
+
+    1.6.3 删除表
+      一般先删除子表，再删除主表
+      drop table child_zsm_00;
+      drop table parent_zsm_00;
+      -- 对表的级联删除(先解除外键约束，然后再删除表)
+      drop table 表名 cascade constraits;
+      
+      drop table parent_zsm_00 cascade constraints;
+      drop table child_zsm_00 cascade constraints;
+
+     1.6.4 表中数据的级联删除和级联置空
+       级联删除：on delete cascade
+       级联置空：on delete set null
+       
+       /* 创建主表 */
+     create table parent_zsm_00(
+         id number(7) primary key,
+         name varchar2(25) not null
+     );  
+     /* 创建子表 */ 
+     create table child_zsm_00(
+        id number(7) primary key,
+        c_name varchar2(20) not null,
+        p_id number(7),
+        constraint parent_id_child_pid_fk_zsm_00 foreign key(p_id) references parent_zsm_00(id) on delete cascade      
+     );
+     insert into parent_zsm_00 values(1,'Admin');
+     insert into parent_zsm_00 values(2,'Test');
+     commit;
+     insert into child_zsm_00 values(1001,'test1',1);
+     insert into child_zsm_00 values(1002,'test2',1);
+     insert into child_zsm_00 values(1003,'test3',2);
+     insert into child_zsm_00 values(1004,'test4',2);
+     commit;
+     delete from parent_zsm_00 where id=1;
+     commit;
+
+2. 其他的数据库对象和分页
+  2.1 其他的数据库对象
+    2.1.1 序列 sequence
+      1) 作用
+          给主键产生不重复的数字
+      2) 创建序列
+         create sequence 序列名;
+         -- 创建一个测试表
+         create table testseq_zsm_00(
+            id number(10) primary key,
+            name varchar2(20)
+         );
+        -- 创建序列
+        create sequence testseq_id_zsm_00;
+       3) 使用序列
+         nextval:产生一个新的序列值
+         currval: 当前的序列值
+        序列名.nextval
+        序列名.currval
+        第一个使用一个序列时，应该首先调用nextval获取第一个值
+        
+      insert into testseq_zsm_00 values(
+         testseq_id_zsm_00.nextval,
+         'test'||testseq_id_zsm_00.currval);  
+      commit; 
+
+      相关数字字典：user_sequences
+
+     4) 删除序列
+       drop sequence 序列名;
+       drop sequence testseq_id_zsm_00;
+
+   2.1.2 索引 index
+     1) 作用
+      提高查询的效率
+      
+      用增删改的时间和和索引页占用的空间获取查询效率的提升
+     
+     2) 系统会自动为主键字段添加索引
+       s_index:id(pk) name
+       set timing on  -- 显式语句执行的时间
+       select id,name from s_index where id=1000000;
+       select id,name from s_index
+                 where name='test1000000';
+
+      -- 创建测试表
+      create table testindex(
+            id number(10) primary key,
+            name varchar2(20) not null 
+      );
+      -- 创建一个序列
+      create sequence testindex_id;
+      begin
+        for var_i in 1..5000000 loop
+           insert into testindex values(testindex_id.nextval,
+                 'test'||testindex_id.currval);
+           commit;
+        end loop;
+      end;
+     
+   3) 手动创建索引
+     语法：
+     create index 索引名 on 表名(字段);
+    4) 删除索引
+     drop index 索引名;
+   
+     相关的数据字典：user_indexes;
+    
+  2.1.3 视图 view
+    1) 作用
+        简化查询操作
+        数据安全
+    
+        本质上视图就是一条select语句
+     2) 创建视图
+        语法：
+        create [or replace] view 视图名[(别名列表)]
+        as select语句
+        [with check option]
+        [with read only];
+     3)创建一个视图 (基于emp_zsm_00)
+        create or replace view vw_emp_zsm_00
+        as
+            select id,last_name,first_name,salary
+              from emp_zsm_00
+                    where dept_id in(31,32,33,34,35);
+
+       select * from vw_emp_zsm_00; 
+       insert into vw_emp_zsm_00 values(
+            30,'LName','FName',2500);
+       commit;
+       -- 创建只读视图
+       create or replace view vw_emp_zsm_00
+        as
+            select id,last_name,first_name,salary
+              from emp_zsm_00
+                    where dept_id in(31,32,33,34,35)
+            with read only;
+        /* 只读视图 不能执行dml操作 */
+        insert into vw_emp_zsm_00 values(
+            31,'LName','FName',2500);
+        
+     4）删除视图
+      drop view 视图名;
+      drop view vw_emp_zsm_00;
+  
+      相关的数字字典: user_views
+    
+  2.2 分页
+    sqlserver:   top
+    mysql: limit
+    oracle: rownum
+    rownum:伪列   
+    
+    -- 显示s_emp表中第一页(每页5行)
+    select rownum,first_name,salary from s_emp
+       where rownum<6;
+    -- 显示s_emp表中第二页(每页5行)
+    /* rownum不能使用> */
+    select rownum,first_name,salary from s_emp
+       where rownum>=6 and rownum<11;
+    select * from
+      (select rownum rn,id,first_name,salary from s_emp
+             where rownum<11)
+      where rn>=6;
+
+    -- 按照工资降序排序，显示第二页
+    select * from
+    (
+      select rownum rn,id,first_name,salary from 
+       (
+           select id,first_name,salary from s_emp
+            order by salary desc
+       )
+          where rownum<11
+     )
+       where rn>=6;
+----------------------------------------------------------------
+练习：
+1. 创建一张表
+  编号          数字  主键
+  名字          字符串  非空
+  入职日期   日期
+  工资          数字     不能低于700
+2.把s_emp表中的数据导入新建表中
+   insert into 表名(字段列表) select语句;
+3.在新建表的名字字段上创建索引
+4.在新建表上创建视图，并测试对视图执行操作   
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   
+
+
+
+
+
+

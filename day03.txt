@@ -1,0 +1,497 @@
+回顾：
+1.单行函数
+2.表连接
+   oracle中的表连接
+   内连接
+      等值连接
+          select e.id,e.first_name,d.name
+              from s_emp e,s_dept d
+                   where e.dept_id = d.id;
+          select d.id,d.name dname,r.name rname
+               from s_dept d,s_region r
+                  where d.region_id = r.id;
+           select e.id,e.first_name,r.name
+               from s_emp e,s_dept d,s_region r
+                  where e.dept_id=d.id and d.region_id = r.id;
+      非等值连接
+           select e.id,e.first_name,e.salary,g.grade
+               from s_emp e,salgrade g
+                  where e.salary between g.losal and g.hisal;
+      自连接
+           select distinct m.id,m.first_name
+              from s_emp e,s_emp m
+                  where e.manager_id = m.id;
+
+   外连接
+      等值连接
+        select e.id,e.first_name,d.name
+              from s_emp e,s_dept d
+                   where e.dept_id = d.id(+);
+          select d.id,d.name dname,r.name rname
+               from s_dept d,s_region r
+                  where d.region_id = r.id(+);
+      非等值连接
+         select e.id,e.first_name,e.salary,g.grade
+               from s_emp e,salgrade g
+                  where e.salary between g.losal(+) and g.hisal(+);
+      自连接
+          select m.id,m.first_name
+              from s_emp e,s_emp m
+                  where e.manager_id(+) = m.id
+                      and e.id is null;
+
+      select d.id,d.name
+          from s_emp e,s_dept d
+              where e.dept_id(+) = d.id
+                 and e.id is null;
+-----------------------------------------------------------------
+1.sql99标准中的表连接
+   内连接:
+     select  字段列表
+        from 表1 [inner] join 表2
+          on 关联条件;
+
+     select e.id,e.first_name,d.name
+        from s_emp e inner join s_dept d
+           on e.dept_id = d.id;
+
+      三表连接：
+      select 字段列表
+        from 表1 join 表2 on 关联条件1
+                       join 表3 on 关联条件2;
+      select e.first_name,d.name,r.name
+         from s_emp e join s_dept d on e.dept_id = d.id
+              join s_region r on d.region_id = r.id; 
+
+   外连接:
+     左外连接：内连接的结果集 + 左表匹配不上的数据
+         select  字段列表
+             from 左表 left [outer] join 右表
+                on 关联条件;
+         select e.id,e.first_name,d.name
+           from s_emp e left join s_dept d
+              on e.dept_id = d.id;
+     右外连接：内连接的结果集 + 右表匹配不上的数据
+         select  字段列表
+             from 左表 right [outer] join 右表
+                on 关联条件;
+         select e.id,e.first_name,d.name
+           from s_emp e right join s_dept d
+              on e.dept_id = d.id;
+     全外连接：内连接的结果集 + 两表匹配不上的数据
+        select  字段列表
+             from 左表 full [outer] join 右表
+                on 关联条件;
+         select e.id,e.first_name,d.name
+           from s_emp e full join s_dept d
+              on e.dept_id = d.id;
+
+         select d.id,d.name
+           from s_emp e right join s_dept d
+              on e.dept_id = d.id
+                 where e.id is null;
+
+2.集合运算（合并结果集）
+   union:     两个结果集取并集  并排重、排序
+   union all：两个结果集直接取并集
+      select id from s_emp union
+      select id from s_dept;
+      select id from s_emp union all
+      select id from s_dept;
+   intersect: 取两个结果集的交集
+      select id from s_emp intersect
+      select id from s_dept;
+   minus: 第一个结果集 - 第二个结果集
+      select id from s_emp minus
+      select id  from s_dept;
+      -- 两个结果集的字段列表的数量和数据类型必须匹配
+      select id,first_name from s_emp minus
+      select id,name from s_dept;
+
+      select id,first_name from s_emp union
+      select null,name from s_dept;
+
+3. 组函数和分组
+   3.1 组函数
+     1) 常用的组函数
+        count(par|*) : 统计一组数据的行数
+                         参数可以是任何类型 还可以是*
+           -- 统计工资高于1500的员工数
+            select count(*) from s_emp where salary>1500;
+        max(par) : 统计一组数据中的最大值
+        min(par)：统计一组数据中的最小值
+                         参数可以是数字、字符串、日期类型
+             -- 列出最早和最晚入职的员工
+             select max(to_char(start_date,'yyyy-mm-dd')),
+                       min(to_char(start_date,'yyyy-mm-dd'))
+                  from s_emp;
+        sum(par) : 统计一组数据的和
+        avg(par) :  统计一组数据的平均值
+                        参数是数字类型
+             -- 列出销售部的总工资和平均工资
+             select sum(salary),avg(salary)
+                  from s_emp e,s_dept d
+                       where e.dept_id = d.id and d.name='Sales';
+
+     2) 组函数对null的处理: 忽略
+        select count(commission_pct) from s_emp;
+     3) 组函数 可以排重
+        select sum(salary),sum(distinct salary) from s_emp;
+        select count(salary),count(distinct salary) from s_emp;
+
+  3.2 分组
+     3.2.1 语法
+       group by 分组标准
+
+        .....
+            where ....
+               group by ...
+                 ...
+                   select
+                     order by
+
+      3.2.2 分组统计每个部门的人数
+          select dept_id,count(*) cnt
+             from s_emp
+                group by dept_id;
+          /* 分组语句中列出的字段必须是分组标准
+              或者是组函数的参数*/
+          select id,dept_id,count(*) cnt
+             from s_emp
+                group by dept_id;  -- 错误
+
+      3.2.2 多列分组
+         分组统计每个部门的人数,显式部门的名称和人数
+         select e.dept_id,d.name,count(e.id) cnt
+            from s_emp e join s_dept d on e.dept_id = d.id
+                group by e.dept_id,d.name;
+         
+        
+         分组统计每个部门的人数,列出人数超过2个的部门
+
+         select dept_id,count(*) cnt
+             from s_emp
+                -- 错误：where子句中不能使用组函数
+                -- where count(*)>2 
+                  group by dept_id;
+
+     3.2.3 having子句
+        分组后，根据条件筛选出符合条件的组
+        select dept_id,count(*) cnt
+            from s_emp
+               where 1=1
+                 group by dept_id
+                    having count(*)>2
+                       order by cnt;
+
+        -- 语法顺序
+        select 字段列表
+            from 表名
+               where 条件   -- 从表中根据条件筛选符合条件的行
+                 group by 分组标准  -- 根据分组标准分成多个组
+                    having 条件  -- 从分组结果中根据条件筛选符合条件的组
+                       order by 排序标准 排序方式; 
+
+         -- 执行顺序
+         from
+           where 
+              group by
+                having
+                  select
+                     order by
+
+   -- 练习：列出平均工资大于1000 的部门的信息
+    select  dept_id,avg(salary) avgsal
+       from s_emp
+           group by dept_id
+              having avg(salary)>1000;
+
+    select d.id,d.name,avg(e.salary) avgsal
+        from s_emp e,s_dept d
+            where e.dept_id = d.id
+                group by d.id,d.name
+                    having avg(e.salary)>1000
+                        order by avgsal;
+
+
+4. 子查询
+  子查询指的是把一条select语句嵌入到另一条sql语句中
+  执行时，先执行嵌入的子查询，然后再执行外层的sql语句
+  4.1 where子句
+    1) 单行单列的子查询
+        -- 列出工资比'Ben'高的员工的信息
+        a. 列出'Ben'的工资
+           select salary from s_emp where first_name='Ben';
+           -- 1100
+        b. 列出工资高于'Ben'的员工的信息
+           select id,first_name,salary from s_emp
+               where salary>1100;
+        c. 合并
+           select id,first_name,salary from s_emp
+               where salary>(
+             select salary from s_emp where first_name='Ben'
+            );
+     2) 多行单列的结果集
+         子查询的结果集为多值时，不能使用比较运算符
+         需要使用处理多值的运算值，比如in、not in、any、all等
+         （any、all要和比较运算符配合使用:>any、<all）
+         -- 使用子查询列出所有的领导的信息
+         a) 列出领导的编号
+             select distinct manager_id from s_emp;
+             -- null,1,2,3,6,7,8,9,10
+         b) 根据编号，列出领导的信息
+             select id,first_name,title from s_emp
+                where id in(null,1,2,3,6,7,8,9,10);
+         c) 合并
+             select id,first_name,title from s_emp
+                where id in(
+               select distinct manager_id from s_emp);
+          -- 使用子查询列出普通员工的信息
+           select id,first_name,title from s_emp
+               where id not in(
+               select distinct manager_id from s_emp
+                  where  manager_id is not null);
+      3) 使用exists
+          -- 列出有员工的部门的信息
+          select * from s_dept d where exists(
+                select * from s_emp e where e.dept_id=d.id
+          );   
+
+  4.2 having子句
+      -- 列出平均工资高于公司平均工资的部门的信息
+      select dept_id,avg(salary) from s_emp
+          group by dept_id
+             having avg(salary)>(
+          select avg(salary) from s_emp
+      );
+  4.3 from子句
+     一个select语句产生的结果集，可以看成是一个内视图或者匿名视图，只能在当前语句使用
+    select id,name,yearsal from 
+       (select id,first_name name,12*salary+1000 yearsal                        from s_emp) e
+         where yearsal>15000;
+   
+    --  列出工资高于本部门平均工资的员工的信息    
+     a) 列出每个部门的编号及其平均工资
+       select dept_id,avg(salary) avgsal from s_emp
+            group by dept_id;  
+       -- 相当于包含dept_id和avgsal两个字段的一张表  s
+     b) 使用表连接(s_emp、s) 实现功能
+        s_emp: id,first_name,salary
+        s: avgsal
+        关联字段:  s_emp.dept_id和s.dept_id
+        select e.id,e.first_name,e.salary,s.avgsal
+          from s_emp e,(
+              select dept_id,avg(salary) avgsal
+                 from s_emp
+                   group by dept_id) s
+               where e.dept_id = s.dept_id
+                  and e.salary > s.avgsal;
+        
+  4.4 select之后
+    外连接的另一种实现方式，并且更为灵活
+    -- 列出员工及其所在部门的信息
+    select id,first_name,salary,(
+        select name from s_dept d where e.dept_id=d.id
+     )  dname
+         from s_emp e;
+
+    -- 练习：列出所有和'Mark'在同一部门的员工的信息
+    select id,first_name,dept_id from s_emp
+        where dept_id=
+    (select dept_id from s_emp where first_name='Mark');
+对象名_姓名缩写_座位号
+xxxx_zsm_00
+-----------------------------------------------------------------
+5.表的操作
+ 5.1 表的创建和删除
+   5.1.1 标识符的命名
+     1) 由a-z、A-Z、0-9、_、$、#构成
+     2)必须用字母开头
+     3) 不能和关键字重名
+     4) 不能和其他的数据库对象重名
+     5) 1-30位
+   5.1.2 创建表
+     -- 语法
+     create table 表名(
+         字段名 数据类型,
+         ....
+         字段名 数据类型
+     );
+     create table testid_zsm_00(
+         id number,
+         name varchar2(20)
+     );
+    5.1.3 删除表
+     drop table 表名;
+     drop table testid_zsm_00;
+
+  5.2 数据操作语句(DML)
+    -- 创建一个测试表
+    三个字段：
+       编号   数字
+       名字   字符串
+       入职日期  日期
+    create table emp_zsm_00(
+       id number(7),
+       name varchar2(20),
+       start_date date
+    );
+   
+    5.2.1 插入语句(insert)  -- 一次一整行
+      1) 语法
+       insert into 表名[(字段列表)] values(值列表);
+       字段列表的数量和顺序和值列表的数量和顺序必须一致
+      2) 不省略字段列表
+       -- 写入全部字段
+       insert into emp_zsm_00(id,name,start_date)
+             values(1,'test1','13-OCT-17');
+       commit;
+       -- 写入部分字段 ( 没有给值的字段必须允许为null )
+       insert into emp_zsm_00(id,name)
+             values(2,'test2');
+       commit;
+     3) 省略字段列表(相当于给出了全部字段，并且顺序和表结构一致)
+         -- 给全部字段提供值
+         insert into emp_zsm_00 values(3,'test3',sysdate);  
+         commit;       
+          insert into emp_zsm_00 values(4,'test4',
+               to_date('2017-10-13','yyyy-mm-dd')); 
+         commit;
+         -- 给部分字段提供值
+          insert into emp_zsm_00 values(5,'test5',null); 
+         commit;
+        
+   5.2.2 更新语句(update)
+      1) 语法
+          update 表名 set 字段 = 新值[,字段 = 新值,...]
+               [where 条件];
+      2) -- 更新 把入职日期改为'2017-01-20'
+          update emp_zsm_00 set start_date='12-JAN-17';
+   
+      3) -- 把id=1的名字改为'Ben',入职日期改为当前日期
+          update emp_zsm_00 set name='Ben',
+              start_date=sysdate where id=1;
+          commit;
+
+    5.2.3 删除语句(delete) -- 整行删除
+      1) 语法
+        delete [from] 表名 [where子句];
+      2) 删除表中全部数据
+         delete from emp_zsm_00;
+         rollback; -- 撤销没有提交的操作
+      3) 带where子句的删除
+         delete from emp_zsm_00 where name like 'test%';
+         commit;
+
+  5.3 事务控制语句 (TCL)
+    select: 和事务无关
+    ddl: 隐式提交的事务
+    dml: 默认需要显式提交
+    
+    5.3.1 事务控制语句的含义
+      commit;     确认事务(提交所有未提交的操作)
+      savepoint 保存点;  定义保存点
+      rollback;   回滚事务(撤销所有未提交的操作)
+      rollback to 保存点; 回顾到保存点的位置
+    
+    5.3.2 事务的四大特性(ACID)
+      1) 原子性：事务中的语句是一个不可分割的整体
+        转账：
+        账户表：account
+        字段：id   balance
+        A账户---> B账户  2000
+        update account set balance = balance - 2000
+                  where  id='A';
+        a
+        update account set balance = balance + 2000
+                  where  id='B'; 
+        b
+        if a&&b
+          commit;
+        else
+           rollback;
+
+        要么全部成功，要么全部失败
+
+     2）一致性
+       事务执行的结果必须是使数据库从一种一致性状态变为另一种一致性状态
+     
+     3) 隔离性
+        一个事务对数据的改变，在提交之前，对于其他的事务是不可见的。
+     4)  持久性
+       事务一旦提交，对数据的改变就是永久的
+
+   5.3.3 部分成功 部分失败
+       -- 删除表中全部数据 属于ddl语句，不能撤销
+       truncate table emp_zsm_00; 
+
+       insert into emp_zsm_00(id,name) values(1,'test1');
+       savepoint a;
+       insert into emp_zsm_00(id,name) values(2,'test2');
+       savepoint b;
+       insert into emp_zsm_00(id,name) values(3,'test3');
+       savepoint c;
+       insert into emp_zsm_00(id,name) values(4,'test4');
+       select * from emp_zsm_00;
+       rollback to b;
+       commit;
+       select * from emp_zsm_00;
+----------------------------------------------------------------
+练习：
+1.使用select语句建表：
+   drop table emp_zsm_00;
+   create table emp_zsm_00 as select * from s_emp;
+2.给所有'Carmen'的下属涨工资
+   1) 查询'Carmen'的编号
+   2) 根据'Carmen'的编号 查询其下属的编号
+   3) 根据员工编号 改工资
+3.删除和'Ben'同部门的员工
+
+
+       
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+         
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

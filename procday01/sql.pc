@@ -1,0 +1,120 @@
+#include <stdio.h>
+#include <stdlib.h>
+exec sql include sqlca;
+int connect();
+void createtable();
+void insert();
+void search();
+void update();
+void delete();
+int main(void)
+{
+	if(connect())
+	{
+		printf("连接错误\n");
+		return -1;
+	}
+	int option;
+	printf("欢迎使用学生管理系统\n");
+	while(1)
+	{
+		printf("1.创建学生表\n");
+		printf("2.注册\n");
+		printf("3.查看\n");
+		printf("4.修改\n");
+		printf("5.删除\n");
+		printf("0.退出\n");
+		printf("请选择：");
+		scanf("%d",&option);
+		switch(option)
+		{
+			case 1:
+				printf("学生管理系统---- 创建表\n\n");
+				createtable();
+				break;
+			case 2:
+				printf("学生管理系统---- 注册\n");
+				insert();
+				break;
+			case 3:
+				printf("学生管理系统---- 查看\n");
+				break;
+			case 4:
+				printf("学生管理系统---- 修改\n");
+				break;
+			case 5:
+				printf("学生管理系统---- 删除\n");
+				break;
+			case 0:
+				printf("谢谢使用!\n");
+				exit(0);
+			default:
+				printf("没有此功能!\n");
+				break;
+		}
+	}
+	return 0;
+}
+int connect()
+{
+    exec sql begin declare section;
+      char username[20];
+	  char passwd[20];
+	exec sql end declare section;
+	printf("请输入用户名:");
+	scanf("%s",username);
+	printf("请输入密码：");
+	scanf("%s",passwd);
+	exec sql connect:username identified by :passwd;
+	return  sqlca.sqlcode;
+}
+void createtable()
+{
+	exec sql create table student_zsm_00(
+			stuno number(7),
+			stuname varchar2(20),
+			birth date);
+}
+void insert()
+{
+	exec sql begin declare section;
+       int stuno;
+	   char name[25];
+	   char birth[20];
+	exec sql end declare section;
+	printf("请输入学号：");
+	scanf("%d",&stuno);
+	printf("请输入姓名:");
+	scanf("%s",name);
+	printf("请输入出生日期:(yyyy-mm-dd)");
+	scanf("%s",birth);
+	exec sql insert into student_zsm_00 values(
+			:stuno,:name,to_date(:birth,'yyyy-mm-dd'));
+	exec sql commit;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
